@@ -5,7 +5,8 @@
 
 for file in *; do
     if [[ -f "$file" ]]; then
-        echo "$file"
+    hash=$(sha256sum < "$file" | cut -d ' ' -f 1)
+    echo "$hash $file"
     fi 
 done
 
