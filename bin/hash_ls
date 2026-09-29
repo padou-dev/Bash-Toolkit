@@ -3,4 +3,9 @@
 # hash_ls - list SHA256 hases of files in a folder,
 #           with optional VirusTotal lookups.
 
-echo "hash_ls is alive"
+for file in *; do
+    if [[ -f "$file" ]]; then
+        echo "$file"
+    fi 
+done
+
