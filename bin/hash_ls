@@ -3,13 +3,15 @@
 # hash_ls - list SHA256 hases of files in a folder,
 #           with optional VirusTotal lookups.
 
-printf '%3s  %-64s  %s\n' "#" "SHA256" "FileName"
+fmt='%3s  %-64s  %10s  %s\n'
+printf "$fmt" "#" "SHA256" "Size" "FileName"
 i=0
 for file in *; do
     if [[ -f "$file" ]]; then
     hash=$(sha256sum < "$file" | cut -d ' ' -f 1)
+    size=$(wc -c < "$file")
     i=$((i + 1))
-    printf '%3s  %-64s  %s\n' "$i" "$hash" "$file"
+    printf "$fmt" "$i" "$hash" "$size" "$file"
     fi 
 done
 
