@@ -29,6 +29,8 @@ human_size() {
 fmt='%3s  %-64s  %10s  %s\n'
 printf "$fmt" "#" "SHA256" "Size" "FileName"
 i=0
+hashes=()
+names=()
 for file in *; do
     if [[ -f "$file" ]]; then
     hash=$(sha256sum < "$file" | cut -d ' ' -f 1)
@@ -36,6 +38,9 @@ for file in *; do
     pretty_size=$(human_size "$size")
     i=$((i + 1))
     printf "$fmt" "$i" "$hash" "$pretty_size" "$file"
+    hashes+=("$hash")
+    names+=("$file")
     fi 
 done
+echo "Stored ${#names[@]} files, First: ${names[0]} ${hashes[0]}"
 
