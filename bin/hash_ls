@@ -3,6 +3,29 @@
 # hash_ls - list SHA256 hases of files in a folder,
 #           with optional VirusTotal lookups.
 
+human_size() {
+    local bytes=$1
+    local divisor
+    local unit
+
+    if (( bytes >= 1024 ** 3 )); then
+        divisor=$(( 1024 ** 3 ))
+        unit="GB"
+    elif (( bytes >= 1024 ** 2 )); then
+        divisor=$(( 1024 ** 2 ))
+        unit="MB"
+    elif (( bytes >= 1024 )); then
+        divisor=1024
+        unit="KB"
+    else
+        printf '%d B' "$bytes"
+        return
+    fi
+
+    local tenths=$(( bytes * 10 / divisor ))
+    printf '%d.%d %s' $(( tenths / 10 )) $(( tenths % 10 )) "$unit"
+}
+
 fmt='%3s  %-64s  %10s  %s\n'
 printf "$fmt" "#" "SHA256" "Size" "FileName"
 i=0
@@ -10,8 +33,9 @@ for file in *; do
     if [[ -f "$file" ]]; then
     hash=$(sha256sum < "$file" | cut -d ' ' -f 1)
     size=$(wc -c < "$file")
+    pretty_size=$(human_size "$size")
     i=$((i + 1))
-    printf "$fmt" "$i" "$hash" "$size" "$file"
+    printf "$fmt" "$i" "$hash" "$pretty_size" "$file"
     fi 
 done
 
