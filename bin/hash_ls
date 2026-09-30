@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# hash_ls - list SHA256 hases of files in a folder,
+# hash_ls - list SHA256 hashes of files in a folder,
 #           with optional VirusTotal lookups.
 
 human_size() {
@@ -40,6 +40,10 @@ vt_lookup() {
     local response
     local status
     local body
+    local malicious
+    local suspicious
+    local total
+    local color
 
     if [[ -z "$VT_API_KEY" ]]; then
         say "$yellow" "No API key - skipping detection stats."
@@ -52,7 +56,17 @@ vt_lookup() {
 
     case "$status" in
         200)
-            say "$green" "Found in VirusTotal (details in the next step)."
+            malicious=$(printf '%s' "$body" | jq '.data.attributes.last_analysis_stats.malicious')
+            suspicious=$(printf '%s' "$body" | jq '.data.attributes.last_analysis_stats.suspicious')
+            total=$(printf '%s' "$body" | jq '.data.attributes.last_analysis_stats | .malicious + .suspicious + .undetected + .harmless')
+            if (( malicious > 0 )); then
+                color=$red
+            elif (( suspicious > 0 )); then
+                color=$yellow
+            else
+                color=$green
+            fi
+            say "$color" "$malicious/$total engines flagged malicious, $suspicious suspicious"
             ;;
         404)
             say "$yellow" "Not in VirusTotal's database - unknown to VT, which is NOT the same as clean."
@@ -69,6 +83,18 @@ vt_lookup() {
     esac
 }
 
+open_url() {
+    local url=$1
+
+    if command -v xdg-open > /dev/null; then
+        xdg-open "$url" > /dev/null 2>&1 &
+    elif command -v open > /dev/null; then
+        open "$url"
+    else
+        echo "Open this link in your browser: $url"
+    fi
+}
+
 fmt='%3s  %-64s  %10s  %s\n'
 printf "$fmt" "#" "SHA256" "Size" "FileName"
 i=0
@@ -76,15 +102,16 @@ hashes=()
 names=()
 for file in *; do
     if [[ -f "$file" ]]; then
-    hash=$(sha256sum < "$file" | cut -d ' ' -f 1)
-    size=$(wc -c < "$file")
-    pretty_size=$(human_size "$size")
-    i=$((i + 1))
-    printf "$fmt" "$i" "$hash" "$pretty_size" "$file"
-    hashes+=("$hash")
-    names+=("$file")
-    fi 
+        hash=$(sha256sum < "$file" | cut -d ' ' -f 1)
+        size=$(wc -c < "$file")
+        pretty_size=$(human_size "$size")
+        i=$((i + 1))
+        printf "$fmt" "$i" "$hash" "$pretty_size" "$file"
+        hashes+=("$hash")
+        names+=("$file")
+    fi
 done
+
 while true; do
     echo
     read -rp "Enter a file # to check on VirusTotal (Q to quit): " choice || break
@@ -96,8 +123,10 @@ while true; do
         continue
     fi
     index=$(( choice - 1 ))
-  echo "Checking ${names[$index]}..."
-  vt_lookup "${hashes[$index]}"
+    echo "Checking ${names[$index]}..."
+    vt_lookup "${hashes[$index]}"
+    read -rp "Open full report in browser? (y/n): " open_answer || break
+    if [[ "$open_answer" == [Yy] ]]; then
+        open_url "https://www.virustotal.com/gui/file/${hashes[$index]}"
+    fi
 done
-
-
