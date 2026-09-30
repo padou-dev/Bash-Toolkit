@@ -42,5 +42,19 @@ for file in *; do
     names+=("$file")
     fi 
 done
-echo "Stored ${#names[@]} files, First: ${names[0]} ${hashes[0]}"
+while true; do
+    echo
+    read -rp "Enter a file # to check on VirusTotal (Q to quit): " choice || break
+    if [[ "$choice" == [Qq] ]]; then
+        break
+    fi
+    if [[ ! "$choice" =~ ^[1-9][0-9]*$ ]] || (( choice > ${#names[@]} )); then
+        echo "Invalid selection."
+        continue
+    fi
+    index=$(( choice - 1 ))
+    echo "You picked ${names[$index]}"
+    echo "SHA256: ${hashes[$index]}"
+done
+
 
