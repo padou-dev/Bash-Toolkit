@@ -72,7 +72,7 @@ vt_lookup() {
             say "$yellow" "Not in VirusTotal's database - unknown to VT, which is NOT the same as clean."
             ;;
         401)
-            say "$red" "API key rejected. Check your VT_API_KEY."
+            say "$red" "API key rejected. To re-enter it, delete $key_file and run hash_ls again."
             ;;
         429)
             say "$yellow" "Rate limited (free tier: 4 lookups/minute). Wait a moment and retry."
@@ -95,9 +95,36 @@ open_url() {
     fi
 }
 
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/bash-toolkit"
+key_file="$config_dir/vt_api_key"
+
+get_vt_key() {
+    local entered
+
+    if [[ -n "$VT_API_KEY" ]]; then
+        return
+    fi
+
+    if [[ -r "$key_file" ]]; then
+        VT_API_KEY=$(< "$key_file")
+        return
+    fi
+
+    echo "No VirusTotal API key found. Get a free key at virustotal.com (profile > API key)."
+    read -rsp "Paste your API key to enable lookups, or press Enter to skip: " entered
+    echo
+
+    if [[ -n "$entered" ]]; then
+        (umask 077; mkdir -p "$config_dir"; printf '%s' "$entered" > "$key_file")
+        VT_API_KEY=$entered
+        say "$green" "Key saved to $key_file"
+    fi
+}
+
 fmt='%3s  %-64s  %10s  %s\n'
 printf "$fmt" "#" "SHA256" "Size" "FileName"
 i=0
+key_checked=false
 hashes=()
 names=()
 for file in *; do
@@ -123,6 +150,10 @@ while true; do
         continue
     fi
     index=$(( choice - 1 ))
+    if [[ "$key_checked" == false ]]; then
+        get_vt_key
+        key_checked=true
+    fi
     echo "Checking ${names[$index]}..."
     vt_lookup "${hashes[$index]}"
     read -rp "Open full report in browser? (y/n): " open_answer || break
